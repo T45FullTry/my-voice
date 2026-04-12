@@ -28,9 +28,9 @@
         @foreach (var recording in recordings)
         {
             <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">@recording.Title</h5>
-                    <small>@recording.DurationSeconds seconds</small>
+                <div class="d-flex w-100 justify-content-between flex-wrap gap-2">
+                    <h5 class="mb-1" style="flex: 1; min-width: 200px;">@recording.Title</h5>
+                    <small class="text-nowrap">@recording.DurationSeconds sec</small>
                 </div>
                 @if (!string.IsNullOrEmpty(recording.Description))
                 {
@@ -45,8 +45,8 @@
                         }
                     </small>
                 </p>
-                <div class="mt-2">
-                    <audio controls class="me-2">
+                <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                    <audio controls class="flex-grow-1" style="min-width: 200px;">
                         <source src="@($"data:audio/webm;base64,{Convert.ToBase64String(recording.AudioData)}")" type="audio/webm" />
                         Your browser does not support audio.
                     </audio>

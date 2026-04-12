@@ -8,15 +8,16 @@
 <h1>🎤 Record Your Voice</h1>
 
 <div class="card">
-    <div class="card-body text-center">
-        <div class="mb-3">
-            <button @onclick="StartRecording" disabled="@isRecording" class="btn btn-lg btn-success me-2">
-                <span class="bi bi-mic-fill"></span> Start Recording
-            </button>
-            <button @onclick="StopRecording" disabled="!isRecording" class="btn btn-lg btn-danger">
-                <span class="bi bi-stop-circle-fill"></span> Stop Recording
-            </button>
-        </div>
+    <div class="card-body">
+        <div class="text-center mb-3">
+            <div class="btn-group w-100" role="group">
+                <button @onclick="StartRecording" disabled="@isRecording" class="btn btn-lg btn-success flex-fill">
+                    <span class="bi bi-mic-fill"></span> Start
+                </button>
+                <button @onclick="StopRecording" disabled="!isRecording" class="btn btn-lg btn-danger flex-fill">
+                    <span class="bi bi-stop-circle-fill"></span> Stop
+                </button>
+            </div>
 
         @if (isRecording)
         {
@@ -37,17 +38,17 @@
         {
             <div class="mt-3">
                 <h5>Preview:</h5>
-                <audio controls>
+                <audio controls class="w-100 mb-3">
                     <source src="@audioUrl" type="audio/webm" />
                     Your browser does not support audio.
                 </audio>
             </div>
 
             <div class="mt-3">
-                <input @bind="title" class="form-control mb-2" placeholder="Recording title" />
+                <input @bind="title" class="form-control mb-2" placeholder="Recording title (required)" />
                 <textarea @bind="description" class="form-control mb-2" placeholder="Description (optional)" rows="3"></textarea>
                 <input @bind="tags" class="form-control mb-2" placeholder="Tags (comma-separated)" />
-                <button @onclick="SaveRecording" class="btn btn-primary">
+                <button @onclick="SaveRecording" class="btn btn-primary w-100">
                     <span class="bi bi-save-fill"></span> Save to Library
                 </button>
             </div>

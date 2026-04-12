@@ -1,11 +1,12 @@
 @inherits LayoutComponentBase
 
 <div class="page">
-    <aside class="sidebar">
+    <div class="sidebar-overlay" @onclick="ToggleSidebar"></div>
+    
+    <aside class="sidebar @sidebarClass">
         <div class="top-row ps-3 navbar navbar-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="">
-                    <span class="navbar-toggler-icon"></span>
                     🎤 my Voice
                 </a>
             </div>
@@ -13,17 +14,17 @@
         <div class="nav-scrollable">
             <nav class="flex-column">
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseSidebarOnMobile">
                         <span class="bi bi-house-door-fill" aria-hidden="true"></span> Home
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="record">
+                    <NavLink class="nav-link" href="record" @onclick="CloseSidebarOnMobile">
                         <span class="bi bi-mic-fill" aria-hidden="true"></span> Record
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="library">
+                    <NavLink class="nav-link" href="library" @onclick="CloseSidebarOnMobile">
                         <span class="bi bi-collection-play-fill" aria-hidden="true"></span> Library
                     </NavLink>
                 </div>
@@ -34,11 +35,14 @@
     <main>
         <div class="top-row ps-3 navbar navbar-light">
             <div class="container-fluid">
+                <button class="menu-toggle" @onclick="ToggleSidebar" aria-label="Toggle menu">
+                    ☰
+                </button>
                 <span class="navbar-brand">Your Voice Reference Library</span>
             </div>
         </div>
 
-        <article class="content px-4">
+        <article class="content">
             @Body
         </article>
     </main>
