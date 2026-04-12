@@ -20,6 +20,10 @@
                     <h5 class="mb-1">@recording.Title</h5>
                     <small>@recording.DurationSeconds seconds</small>
                 </div>
+                @if (!string.IsNullOrEmpty(recording.Description))
+                {
+                    <p class="mb-1 text-muted">@recording.Description</p>
+                }
                 <p class="mb-1">
                     <small class="text-muted">
                         @recording.CreatedAt.ToString("MMM dd, yyyy HH:mm")

@@ -50,6 +50,10 @@
                 <div>
                     <strong>@recording.Title</strong><br />
                     <small class="text-muted">@recording.CreatedAt.ToString("MMM dd, yyyy HH:mm")</small>
+                    @if (!string.IsNullOrEmpty(recording.Description))
+                    {
+                        <br /><small class="text-muted">@recording.Description</small>
+                    }
                 </div>
                 <audio controls class="me-2">
                     <source src="@($"data:audio/webm;base64,{Convert.ToBase64String(recording.AudioData)}")" type="audio/webm" />
