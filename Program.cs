@@ -1,0 +1,41 @@
+using Microsoft.EntityFrameworkCore;
+using my_voice.Data;
+using my_voice.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+// Add SQLite database context
+builder.Services.AddDbContext<VoiceDbContext>(options =>
+    options.UseSqlite("Data Source=voices.db"));
+
+// Add voice recording service
+builder.Services.AddScoped<IVoiceRecordingService, VoiceRecordingService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+// Initialize database
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<VoiceDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.Run();

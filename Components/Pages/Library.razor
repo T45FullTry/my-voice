@@ -1,0 +1,85 @@
+@page "/library"
+@inject VoiceDbContext Db
+@inject IVoiceRecordingService VoiceService
+
+<PageTitle>Library - my Voice</PageTitle>
+
+<h1>📚 Your Voice Library</h1>
+
+<div class="mb-3">
+    <input @bind="searchTerm" class="form-control" placeholder="Search by title or tags..." />
+</div>
+
+@if (recordings.Any())
+{
+    <div class="list-group">
+        @foreach (var recording in recordings)
+        {
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">@recording.Title</h5>
+                    <small>@recording.DurationSeconds seconds</small>
+                </div>
+                <p class="mb-1">
+                    <small class="text-muted">
+                        @recording.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                        @if (!string.IsNullOrEmpty(recording.Tags))
+                        {
+                            <span> | Tags: @recording.Tags</span>
+                        }
+                    </small>
+                </p>
+                <div class="mt-2">
+                    <audio controls class="me-2">
+                        <source src="@($"data:audio/webm;base64,{Convert.ToBase64String(recording.AudioData)}")" type="audio/webm" />
+                        Your browser does not support audio.
+                    </audio>
+                    <button @onclick="() => DeleteRecording(recording.Id)" class="btn btn-sm btn-outline-danger">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        No recordings yet. <a href="record" class="alert-link">Record your first voice note!</a>
+    </div>
+}
+
+@code {
+    private string? searchTerm;
+    private List<VoiceRecording> recordings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecordings();
+    }
+
+    private async Task LoadRecordings()
+    {
+        IQueryable<VoiceRecording> query = Db.VoiceRecordings.OrderByDescending(r => r.CreatedAt);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(r => 
+                r.Title.Contains(searchTerm) || 
+                (r.Tags != null && r.Tags.Contains(searchTerm)));
+        }
+
+        recordings = await query.ToListAsync();
+    }
+
+    private async Task DeleteRecording(int id)
+    {
+        var recording = await Db.VoiceRecordings.FindAsync(id);
+        if (recording != null)
+        {
+            Db.VoiceRecordings.Remove(recording);
+            await Db.SaveChangesAsync();
+            await LoadRecordings();
+        }
+    }
+}
