@@ -40,11 +40,22 @@
     </div>
 </div>
 
-@if (recentRecordings.Any())
+<div class="mb-3">
+    <div class="input-group">
+        <span class="input-group-text">🔍</span>
+        <input @bind="searchTerm" @bind:event="oninput" class="form-control" placeholder="Search recordings..." />
+        @if (!string.IsNullOrEmpty(searchTerm))
+        {
+            <button @onclick="ClearSearch" class="btn btn-outline-secondary" type="button">Clear</button>
+        }
+    </div>
+</div>
+
+@if (filteredRecordings.Any())
 {
     <h3 class="mt-4">Recent Recordings</h3>
     <div class="list-group">
-        @foreach (var recording in recentRecordings.Take(5))
+        @foreach (var recording in filteredRecordings.Take(5))
         {
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
@@ -68,6 +79,8 @@
     private int recordingCount = 0;
     private double totalDuration = 0;
     private List<VoiceRecording> recentRecordings = new();
+    private List<VoiceRecording> filteredRecordings = new();
+    private string? searchTerm;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,5 +90,28 @@
         
         recordingCount = recentRecordings.Count;
         totalDuration = recentRecordings.Sum(r => r.DurationSeconds) / 60.0;
+        filteredRecordings = recentRecordings;
+    }
+
+    private void FilterRecordings()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredRecordings = recentRecordings;
+        }
+        else
+        {
+            filteredRecordings = recentRecordings
+                .Where(r => r.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                           (r.Tags != null && r.Tags.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                           (r.Description != null && r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = null;
+        FilterRecordings();
     }
 }

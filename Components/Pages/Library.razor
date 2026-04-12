@@ -6,8 +6,20 @@
 
 <h1>📚 Your Voice Library</h1>
 
-<div class="mb-3">
-    <input @bind="searchTerm" class="form-control" placeholder="Search by title or tags..." />
+<div class="row mb-3">
+    <div class="col-md-8">
+        <div class="input-group">
+            <span class="input-group-text">🔍</span>
+            <input @bind="searchTerm" @bind:event="oninput" class="form-control" placeholder="Search by title or tags..." />
+            @if (!string.IsNullOrEmpty(searchTerm))
+            {
+                <button @onclick="ClearSearch" class="btn btn-outline-secondary" type="button">Clear</button>
+            }
+        </div>
+    </div>
+    <div class="col-md-4 text-end">
+        <span class="text-muted">@recordings.Count recording@(recordings.Count != 1 ? "s" : "") found</span>
+    </div>
 </div>
 
 @if (recordings.Any())
@@ -74,6 +86,12 @@ else
         }
 
         recordings = await query.ToListAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        await LoadRecordings();
     }
 
     private async Task DeleteRecording(int id)
