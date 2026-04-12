@@ -12,7 +12,7 @@ A Blazor web app for recording and storing voice references.
 
 ## Tech Stack
 
-- **Frontend**: Blazor Server (.NET 8)
+- **Frontend**: Blazor Server (.NET 10)
 - **Database**: SQLite (metadata only)
 - **Audio Storage**: Browser IndexedDB / Base64 in database
 - **Recording**: Browser MediaRecorder API
@@ -21,7 +21,7 @@ A Blazor web app for recording and storing voice references.
 
 ### Prerequisites
 
-- .NET 8 SDK or later
+- .NET 10 SDK or later
 - A modern browser with microphone support
 
 ### Run the App
@@ -89,3 +89,8 @@ MIT
 ---
 
 Built with 🦞 by Killer Queen for Vincent
+
+## Version History
+
+- **v1.1.0** - .NET 10 support
+- **v1.0.0** - Initial release (.NET 8)
