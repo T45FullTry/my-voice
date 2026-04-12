@@ -74,6 +74,93 @@ window.stopAudioRecording = function () {
     });
 };
 
+// Swipe gesture handling for mobile
+window.initSwipe = function (elementId, dotNetHelper) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+    const threshold = 50; // px to trigger action
+
+    element.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+        const content = element.querySelector('.swipe-content');
+        if (content) content.classList.add('swiping');
+    }, { passive: true });
+
+    element.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        
+        // Only horizontal swipe
+        if (Math.abs(diff) > 10) {
+            e.preventDefault();
+        }
+
+        const content = element.querySelector('.swipe-content');
+        const actions = element.querySelector('.swipe-actions');
+        
+        if (content && actions) {
+            if (diff < 0) {
+                // Swipe left - show actions
+                const moveX = Math.max(diff, -100);
+                content.style.transform = `translateX(${moveX}px)`;
+                actions.classList.add('visible');
+            } else {
+                // Swipe right - play
+                content.style.transform = `translateX(${Math.min(diff, 50)}px)`;
+            }
+        }
+    }, { passive: false });
+
+    element.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        
+        const diff = currentX - startX;
+        const content = element.querySelector('.swipe-content');
+        const actions = element.querySelector('.swipe-actions');
+        
+        if (content && actions) {
+            content.classList.remove('swiping');
+            
+            if (diff < -threshold) {
+                // Swipe left - keep actions visible
+                content.style.transform = 'translateX(-100px)';
+                actions.classList.add('visible');
+            } else if (diff > threshold) {
+                // Swipe right - trigger play
+                dotNetHelper.invokeMethodAsync('OnSwipeRight');
+                content.style.transform = 'translateX(0)';
+                actions.classList.remove('visible');
+            } else {
+                // Reset
+                content.style.transform = 'translateX(0)';
+                actions.classList.remove('visible');
+            }
+        }
+        
+        startX = 0;
+        currentX = 0;
+    }, { passive: true });
+
+    // Close actions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!element.contains(e.target)) {
+            const content = element.querySelector('.swipe-content');
+            const actions = element.querySelector('.swipe-actions');
+            if (content && actions) {
+                content.style.transform = 'translateX(0)';
+                actions.classList.remove('visible');
+            }
+        }
+    });
+};
+
 window.testMicrophoneAccess = function () {
     return navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {

@@ -1,6 +1,7 @@
 @page "/library"
 @inject VoiceDbContext Db
 @inject IVoiceRecordingService VoiceService
+@inject IJSRuntime JS
 
 <PageTitle>Library - my Voice</PageTitle>
 
@@ -27,32 +28,43 @@
     <div class="list-group">
         @foreach (var recording in recordings)
         {
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between flex-wrap gap-2">
-                    <h5 class="mb-1" style="flex: 1; min-width: 200px;">@recording.Title</h5>
-                    <small class="text-nowrap">@recording.DurationSeconds sec</small>
-                </div>
-                @if (!string.IsNullOrEmpty(recording.Description))
-                {
-                    <p class="mb-1 text-muted">@recording.Description</p>
-                }
-                <p class="mb-1">
-                    <small class="text-muted">
-                        @recording.CreatedAt.ToString("MMM dd, yyyy HH:mm")
-                        @if (!string.IsNullOrEmpty(recording.Tags))
-                        {
-                            <span> | Tags: @recording.Tags</span>
-                        }
-                    </small>
-                </p>
-                <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
-                    <audio controls class="flex-grow-1" style="min-width: 200px;">
-                        <source src="@($"data:audio/webm;base64,{Convert.ToBase64String(recording.AudioData)}")" type="audio/webm" />
-                        Your browser does not support audio.
-                    </audio>
-                    <button @onclick="() => DeleteRecording(recording.Id)" class="btn btn-sm btn-outline-danger">
-                        Delete
+            var itemId = $"recording-{recording.Id}";
+            <div class="list-group-item swipeable-item p-0" id="@itemId">
+                <div class="swipe-actions">
+                    <button @onclick="() => OpenEditModal(recording)" class="btn btn-warning" title="Edit">
+                        ✏️
                     </button>
+                    <button @onclick="() => DeleteRecording(recording.Id)" class="btn btn-danger" title="Delete">
+                        🗑️
+                    </button>
+                </div>
+                <div class="swipe-content p-3">
+                    <div class="d-flex w-100 justify-content-between flex-wrap gap-2">
+                        <h5 class="mb-1" style="flex: 1; min-width: 200px;">@recording.Title</h5>
+                        <small class="text-nowrap">@recording.DurationSeconds sec</small>
+                    </div>
+                    @if (!string.IsNullOrEmpty(recording.Description))
+                    {
+                        <p class="mb-1 text-muted">@recording.Description</p>
+                    }
+                    <p class="mb-1">
+                        <small class="text-muted">
+                            @recording.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                            @if (!string.IsNullOrEmpty(recording.Tags))
+                            {
+                                <span> | Tags: @recording.Tags</span>
+                            }
+                        </small>
+                    </p>
+                    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                        <audio @ref="audioElements[recording.Id]" controls class="flex-grow-1" style="min-width: 200px;">
+                            <source src="@($"data:audio/webm;base64,{Convert.ToBase64String(recording.AudioData)}")" type="audio/webm" />
+                            Your browser does not support audio.
+                        </audio>
+                    </div>
+                    <div class="mt-2 d-md-none">
+                        <small class="text-muted">💡 Swipe left to edit/delete, swipe right to play</small>
+                    </div>
                 </div>
             </div>
         }
@@ -65,13 +77,58 @@ else
     </div>
 }
 
+@if (showEditModal)
+{
+    <div class="edit-modal" @onclick="CloseEditModal">
+        <div class="edit-modal-content" @onclick:stopPropagation>
+            <h3>Edit Recording</h3>
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input @bind="editTitle" class="form-control" placeholder="Recording title" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea @bind="editDescription" class="form-control" placeholder="Description (optional)" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Tags</label>
+                <input @bind="editTags" class="form-control" placeholder="Tags (comma-separated)" />
+            </div>
+            <div class="d-flex gap-2">
+                <button @onclick="SaveEdit" class="btn btn-primary flex-fill">Save Changes</button>
+                <button @onclick="CloseEditModal" class="btn btn-outline-secondary flex-fill">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string? searchTerm;
     private List<VoiceRecording> recordings = new();
+    private Dictionary<int, ElementReference> audioElements = new();
+    private bool showEditModal;
+    private int? editingId;
+    private string? editTitle;
+    private string? editDescription;
+    private string? editTags;
+    private DotNetObjectReference<LibraryComponent>? dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
+        dotNetRef = DotNetObjectReference.Create(this);
         await LoadRecordings();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            foreach (var recording in recordings)
+            {
+                var itemId = $"recording-{recording.Id}";
+                await JS.InvokeVoidAsync("initSwipe", itemId, dotNetRef);
+            }
+        }
     }
 
     private async Task LoadRecordings()
@@ -103,5 +160,56 @@ else
             await Db.SaveChangesAsync();
             await LoadRecordings();
         }
+    }
+
+    private void OpenEditModal(VoiceRecording recording)
+    {
+        editingId = recording.Id;
+        editTitle = recording.Title;
+        editDescription = recording.Description;
+        editTags = recording.Tags;
+        showEditModal = true;
+    }
+
+    private void CloseEditModal()
+    {
+        showEditModal = false;
+        editingId = null;
+        editTitle = null;
+        editDescription = null;
+        editTags = null;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingId.HasValue && !string.IsNullOrWhiteSpace(editTitle))
+        {
+            var recording = await Db.VoiceRecordings.FindAsync(editingId.Value);
+            if (recording != null)
+            {
+                recording.Title = editTitle.Trim();
+                recording.Description = editDescription?.Trim();
+                recording.Tags = editTags?.Trim();
+                await Db.SaveChangesAsync();
+                CloseEditModal();
+                await LoadRecordings();
+            }
+        }
+    }
+
+    public async Task OnSwipeRight()
+    {
+        // Auto-play the first audio element
+        if (audioElements.Any())
+        {
+            var firstAudio = audioElements.Values.First();
+            await JS.InvokeVoidAsync("eval", $"document.querySelector('#{firstAudio.Id}')?.play()");
+        }
+    }
+
+    protected override void Dispose()
+    {
+        dotNetRef?.Dispose();
+        base.Dispose();
     }
 }
