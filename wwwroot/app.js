@@ -2,76 +2,140 @@
 let mediaRecorder = null;
 let audioChunks = [];
 
-window.startAudioRecording = function (dotNetHelper) {
-    return navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
+window.startAudioRecording = async function (dotNetHelper) {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
 
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const reader = new FileReader();
-                
-                reader.onloadend = function() {
-                    const base64data = reader.result;
-                    // Remove data URL prefix
-                    const base64 = base64data.split(',')[1];
-                    const binaryString = atob(base64);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-                    
-                    // Call back to Blazor
-                    dotNetHelper.invokeMethodAsync('OnRecordingComplete', bytes);
-                };
-                
-                reader.readAsDataURL(audioBlob);
-            };
+        mediaRecorder.onerror = event => {
+            console.error('MediaRecorder error:', event.error);
+        };
 
-            mediaRecorder.start();
-        })
-        .catch(err => {
-            console.error('Error accessing microphone:', err);
-            throw err;
-        });
+        mediaRecorder.start();
+        console.log('Recording started successfully');
+        return true;
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
+        throw new Error(`Microphone access denied: ${err.message}`);
+    }
 };
 
-window.stopAudioRecording = function () {
+window.stopAudioRecording = async function () {
     return new Promise((resolve, reject) => {
         if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-            reject(new Error('Not recording'));
+            reject(new Error('Recording not in progress'));
             return;
         }
 
-        mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            
-            reader.onloadend = function() {
-                const base64data = reader.result;
-                const base64 = base64data.split(',')[1];
-                const binaryString = atob(base64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                resolve(bytes);
-            };
-            
-            reader.onerror = reject;
-            reader.readAsDataURL(audioBlob);
-        };
+        try {
+            // Set the onstop handler BEFORE calling stop()
+            mediaRecorder.onstop = () => {
+                console.log(`Audio chunks collected: ${audioChunks.length}`);
 
-        mediaRecorder.stop();
-        
-        // Stop all tracks
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                if (audioChunks.length === 0) {
+                    reject(new Error('No audio data recorded'));
+                    return;
+                }
+
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                console.log(`Audio blob created: ${audioBlob.size} bytes`);
+
+                const reader = new FileReader();
+
+                reader.onloadend = async function() {
+                    try {
+                        const base64data = reader.result;
+                        if (!base64data || base64data.length < 30) {
+                            reject(new Error('Invalid audio data'));
+                            return;
+                        }
+
+                        // Extract just the base64 part (without the data:audio/webm;base64, prefix)
+                        const base64 = base64data.split(',')[1];
+                        if (!base64) {
+                            reject(new Error('Failed to extract base64 data'));
+                            return;
+                        }
+
+                        console.log(`Recording stopped. Base64 size: ${base64.length} chars`);
+
+                        // Store base64 in sessionStorage IMMEDIATELY (before upload)
+                        sessionStorage.setItem('recordedAudio', base64);
+
+                        // Upload to server via fetch API (bypasses WebSocket size limit)
+                        try {
+                            const response = await fetch('/api/audio/upload', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'text/plain'
+                                },
+                                body: base64
+                            });
+
+                            if (!response.ok) {
+                                const error = await response.text();
+                                throw new Error(`Upload failed: ${response.status} - ${error}`);
+                            }
+
+                            const result = await response.json();
+                            console.log('Audio uploaded successfully:', result);
+
+                            // Return just "success" instead of the large base64 string
+                            resolve('success');
+                        } catch (uploadErr) {
+                            console.error('Error uploading audio:', uploadErr);
+                            // Still return success - audio is stored locally in sessionStorage
+                            resolve('success');
+                        }
+                    } catch (err) {
+                        console.error('Error processing audio data:', err);
+                        reject(err);
+                    }
+                };
+
+                reader.onerror = (err) => {
+                    console.error('FileReader error:', err);
+                    reject(err);
+                };
+
+                try {
+                    reader.readAsDataURL(audioBlob);
+                } catch (err) {
+                    console.error('Error reading audio blob:', err);
+                    reject(err);
+                }
+            };
+
+            // Now call stop() - the handler is already set
+            mediaRecorder.stop();
+
+            // Stop all tracks
+            mediaRecorder.stream.getTracks().forEach(track => {
+                try {
+                    track.stop();
+                    console.log('Audio track stopped');
+                } catch (err) {
+                    console.error('Error stopping track:', err);
+                }
+            });
+        } catch (err) {
+            console.error('Error stopping recording:', err);
+            reject(err);
+        }
     });
+};
+
+window.getRecordedAudio = function() {
+    return sessionStorage.getItem('recordedAudio') || null;
+};
+
+window.clearRecordedAudio = function() {
+    sessionStorage.removeItem('recordedAudio');
 };
 
 // Swipe gesture handling for mobile

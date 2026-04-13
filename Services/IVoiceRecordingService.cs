@@ -1,4 +1,7 @@
-namespace my_voice.Services;
+namespace MyVoice.Services;
+
+using MyVoice.Data;
+using Microsoft.EntityFrameworkCore;
 
 public interface IVoiceRecordingService
 {

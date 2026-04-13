@@ -1,12 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using my_voice.Data;
-using my_voice.Services;
+using MyVoice.Components;
+using MyVoice.Data;
+using MyVoice.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add controllers for API endpoints
+builder.Services.AddControllers();
 
 // Add SQLite database context
 builder.Services.AddDbContext<VoiceDbContext>(options =>
@@ -27,6 +31,9 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+// Map API controller routes
+app.MapControllers();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

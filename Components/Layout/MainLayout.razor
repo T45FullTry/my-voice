@@ -47,3 +47,19 @@
         </article>
     </main>
 </div>
+
+@code {
+    private bool sidebarOpen = false;
+    private string sidebarClass => sidebarOpen ? "open" : "";
+
+    private void ToggleSidebar()
+    {
+        sidebarOpen = !sidebarOpen;
+    }
+
+    private void CloseSidebarOnMobile()
+    {   
+        // Close sidebar on mobile when a nav link is clicked
+        sidebarOpen = false;
+    }
+}

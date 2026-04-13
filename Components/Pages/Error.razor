@@ -1,5 +1,6 @@
 @page "/Error"
 @using Microsoft.AspNetCore.Diagnostics
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Error - my Voice</PageTitle>
 
@@ -7,8 +8,7 @@
 <h2 class="text-danger">An error occurred while processing your request.</h2>
 
 @{
-    var exceptionHandlerPathFeature = 
-        HttpContext.Features.Get<IExceptionHandlerPathFeature>();
+    var exceptionHandlerPathFeature = HttpContextAccessor.HttpContext?.Features?.Get<IExceptionHandlerPathFeature>();
 }
 
 @if (exceptionHandlerPathFeature?.Error is not null)

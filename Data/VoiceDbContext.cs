@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace my_voice.Data;
+namespace MyVoice.Data;
 
 public class VoiceDbContext : DbContext
 {
@@ -36,7 +36,7 @@ public class VoiceRecording
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? Tags { get; set; }
-    public byte[] AudioData { get; set; } = Array.Empty<byte>();
+    public byte[] AudioData { get; set; } = [];
     public int DurationSeconds { get; set; }
     public DateTime CreatedAt { get; set; }
 }

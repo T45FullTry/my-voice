@@ -1,0 +1,191 @@
+﻿@page "/record"
+@inject IJSRuntime JS
+@inject VoiceDbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Record - my Voice</PageTitle>
+
+<h1>🎤 Record Your Voice</h1>
+
+<div class="card">
+    <div class="card-body">
+        <div class="text-center mb-3">
+            <div class="btn-group w-100" role="group">
+                <button @onclick="StartRecording" disabled="@isRecording" class="btn btn-lg btn-success flex-fill">
+                    <span class="bi bi-mic-fill"></span> Start
+                </button>
+                <button @onclick="StopRecording" disabled="!@isRecording" class="btn btn-lg btn-danger flex-fill">
+                    <span class="bi bi-stop-circle-fill"></span> Stop
+                </button>
+            </div>
+        </div>
+
+        @if (isRecording)
+        {
+            <div class="alert alert-info">
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                Recording... @recordingSeconds seconds
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert alert-@(isError ? "danger" : "success")">
+                @statusMessage
+            </div>
+        }
+
+        @if (audioBlob != null)
+        {
+            <div class="mt-3">
+                <h5>Preview:</h5>
+                <audio controls class="w-100 mb-3">
+                    <source src="@audioUrl" type="audio/webm" />
+                    Your browser does not support audio.
+                </audio>
+            </div>
+
+            <div class="mt-3">
+                <input @bind="title" class="form-control mb-2" placeholder="Recording title (required)" />
+                <textarea @bind="description" class="form-control mb-2" placeholder="Description (optional)" rows="3"></textarea>
+                <input @bind="tags" class="form-control mb-2" placeholder="Tags (comma-separated)" />
+                <button @onclick="SaveRecording" class="btn btn-primary w-100">
+                    <span class="bi bi-save-fill"></span> Save to Library
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool isRecording = false;
+    private int recordingSeconds;
+    private string? statusMessage;
+    private bool isError;
+    private string? title;
+    private string? description;
+    private string? tags;
+    private byte[]? audioBlob;
+    private string? audioUrl;
+    private System.Timers.Timer? timer;
+    private DotNetObjectReference<Record>? dotNetRef;
+
+    protected override void OnInitialized()
+    {
+        dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task StartRecording()
+    {
+        try
+        {
+            isError = false;
+            statusMessage = "Requesting microphone access...";
+            await InvokeAsync(StateHasChanged);
+
+            await JS.InvokeVoidAsync("startAudioRecording", dotNetRef);
+            isRecording = true;
+            recordingSeconds = 0;
+            statusMessage = null;
+            audioBlob = null;
+            audioUrl = null;
+            await InvokeAsync(StateHasChanged);
+
+            timer = new System.Timers.Timer(1000);
+            timer.Elapsed += (s, e) => InvokeAsync(async () => 
+            {
+                recordingSeconds++;
+                await InvokeAsync(StateHasChanged);
+            });
+            timer.Start();
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            statusMessage = $"Failed to start recording: {ex.Message}";
+            isRecording = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StopRecording()
+    {
+        try
+        {
+            timer?.Stop();
+            timer?.Dispose();
+            
+            var blob = await JS.InvokeAsync<byte[]>("stopAudioRecording");
+            audioBlob = blob;
+            audioUrl = $"data:audio/webm;base64,{Convert.ToBase64String(blob)}";
+            isRecording = false;
+            statusMessage = "Recording complete! Add a title and save.";
+            isError = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            statusMessage = $"Failed to stop recording: {ex.Message}";
+            isRecording = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SaveRecording()
+    {
+        if (audioBlob == null || string.IsNullOrWhiteSpace(title))
+        {
+            isError = true;
+            statusMessage = "Please provide a title for your recording.";
+            return;
+        }
+
+        try
+        {
+            VoiceRecording recording = new VoiceRecording
+            {
+                Title = title.Trim(),
+                Description = description?.Trim(),
+                Tags = tags?.Trim() ?? "",
+                AudioData = audioBlob,
+                DurationSeconds = recordingSeconds,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            Db.VoiceRecordings.Add(recording);
+            await Db.SaveChangesAsync();
+
+            statusMessage = "Recording saved successfully!";
+            isError = false;
+            audioBlob = null;
+            audioUrl = null;
+            title = null;
+            description = null;
+            tags = null;
+            await InvokeAsync(StateHasChanged);
+
+            // Navigate to library after short delay
+            await Task.Delay(1500);
+            Navigation.NavigateTo("library");
+        }
+        catch (Exception ex)
+        {
+            isError = true;
+            statusMessage = $"Failed to save: {ex.Message}";
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingComplete(byte[] audioData)
+    {
+        audioBlob = audioData;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+        dotNetRef?.Dispose();
+    }
+}

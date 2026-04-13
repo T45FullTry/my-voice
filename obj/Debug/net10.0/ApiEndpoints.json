@@ -1,0 +1,12 @@
+[
+  {
+    "ContainingType": "MyVoice.Api.AudioController",
+    "Method": "UploadAudio",
+    "RelativePath": "api/Audio/upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

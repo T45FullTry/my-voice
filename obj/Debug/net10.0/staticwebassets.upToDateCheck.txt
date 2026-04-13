@@ -1,0 +1,8 @@
+wwwroot\app.css
+wwwroot\app.js
+C:\Users\vinjo\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.5\build\..\_framework\blazor.web.js
+C:\Users\vinjo\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.5\build\..\_framework\blazor.server.js
+C:\Users\vinjo\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.5\_framework\blazor.server.js
+C:\Users\vinjo\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.5\_framework\blazor.web.js
+F:\Toys\MyVoice\wwwroot\app.js
+F:\Toys\MyVoice\wwwroot\app.css
